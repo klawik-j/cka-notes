@@ -1,0 +1,68 @@
+1. Najpierw trzeba miec cluster. Mozna uzyc do tego minikube: minikube start
+
+2. Uruchamianie podow najlepiej robic przez declarative command - hello-world-apply.yml: kubectl apply -f hello-world-apply.yml
+
+3. Aby miec dostep do api kontenerow trzeba wystawic proxy zeby mogly sie one komunikowac ze swiatem poza k8s:
+- kubectl expose deployment/hello-world
+- kubectl proxy
+
+4. Uzyteczne komendy:
+- kubectl get pod -o wide
+- kubectl get deploy
+- kubectl delete pod
+- kubectl delete deploy
+- kubectl get services
+- kubectl get all
+- kubectl describe pod
+- kubectl edit deploy
+- kubectl create -f deploy.yml
+- kubectl replace -f deploy.yml (z flaga --force usuwa istniejacy obiekt i tworzy na nowo)
+- kubectl apply -f deploy.yml
+- kubectl scale
+- kubectl run nginx --dry-run=client -o yaml
+
+4. Services
+4.1 NodePort: deploy-node
+4.2 LoadBalander: cos jak NodePort tylko bardziej zaawansowany, ujednolicony
+4.3 ClusterIP: deploy-deploy
+
+5. Taints and Tolerations
+Chodzi o ochrone nodow przed schedulowaniem na nich niepozadanych podow.
+- kubectl taint nodes node-name key=value:taint-efect
+taint-efect=[NoSchedule/PrefereNoSchedule/NoExecute]
+
+6. DaemonSet
+Tworzy 1 i tylko pod na kazdy klaster automatycznie. Uzywane do monitorowania i loggowania. Nie da sie przez kubectl create ds. Trzeba przez create deployment. Instrukcja w docs k8s. Nie podlega pod scheduler.
+
+7. staticPods
+Pody nie podlegajace pod scheduler. Dzieki czemu moga byc tworzone na node workerze bez istnienia node master. Dba o nie kubelet. Tworzy je na podstawie yml znajdujacego sie w konkretnej lokalizacji. Mozna ja znalezc robiac:
+- ps -aux | grep kubelet - pelna komenda odpalajaca kubelet, trzeba znalezc sciezke z flagi --config - pod ta sciezka znajduje sie config kubeleta.
+- cat konfigu kubeleta - szukamy pola staticPod - to jest szukana sciezka.
+Aby zarzadzac static podamy na innych nodeach niz controlplane, trzeba uprzednio sie do nich polaczyc: ssh nazwa-node
+
+
+8. Node down
+- kubectl drain node01 - usuwa pody z node01 i recreating je na innych nodeach - jezeli sa czescia ReplicaSet/Deployment
+- kubectl uncordon node01 - pozwala na ponowne schedulowanie podow na nodzie
+- kubectl cordon node01 - zabrania scedulowania podow na nodzie
+
+10. Nodes upgrade version.
+follow https://v1-20.docs.kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+
+11. Bringing back
+- trzeba zrobic snapshot etcd:
+-- export ETCDCTL_API=3
+-- etcdctl --endpoints=https://[127.0.0.1]:2379 \
+	--cacert=/etc/kubernetes/pki/etcd/ca.crt \
+	--cert=/etc/kubernetes/pki/etcd/server.crt \
+	--key=/etc/kubernetes/pki/etcd/server.key \
+	snapshot save /opt/snapshot-pre-boot.db
+- stawianie na nowo:
+-- etcdctl snapshot restore /opt/snapshot-pre-boot.db --data-dir /var/lib/etcd-before-reboot/
+-- zmodyfikowanie /etc/kubernetes/manifests/etcd.yaml w polach volumes hostPath name:etcd-data
+
+
+
+
+
+/etc/kubernetes/pki/etcd/ca.crt
