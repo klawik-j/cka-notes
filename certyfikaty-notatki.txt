@@ -1,0 +1,96 @@
+jak podejzec certyfikat:
+openssl x509 -in file-path.crt -text -noout
+--------------------------------------------
+naogol wypierdalaja sie rzeczy z tego pliku:
+/etc/kubernetes/manifests/kube-apiserver.yaml
+--------------------------------------------
+certificate signing request:
+templatka csr
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: nazwa-csr
+spec:
+  groups:
+  - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZqQ0NBVDRDQVFBd0VURVBNQTBHQTFVRUF3d0dZV3R6YUdGNU1JSUJJakFOQmdrcWhraUc5dzBCQVFFRgpBQU9DQVE4QU1JSUJDZ0tDQVFFQXY4azZTTE9HVzcrV3JwUUhITnI2TGFROTJhVmQ1blNLajR6UEhsNUlJYVdlCmJ4RU9JYkNmRkhKKzlIOE1RaS9hbCswcEkwR2xpYnlmTXozL2lGSWF3eGVXNFA3bDJjK1g0L0lqOXZQVC9jU3UKMDAya2ZvV0xUUkpQbWtKaVVuQTRpSGxZNDdmYkpQZDhIRGFuWHM3bnFoenVvTnZLbWhwL2twZUVvaHd5MFRVMAo5bzdvcjJWb1hWZTVyUnNoMms4dzV2TlVPL3BBdEk4VkRydUhCYzRxaHM3MDI1ZTZTUXFDeHUyOHNhTDh1blJQCkR6V2ZsNVpLcTVpdlJNeFQrcUo0UGpBL2pHV2d6QVliL1hDQXRrRVJyNlMwak9XaEw1Q0ErVU1BQmd5a1c5emQKTmlXbnJZUEdqVWh1WjZBeWJ1VzMxMjRqdlFvbndRRUprNEdoayt2SU53SURBUUFCb0FBd0RRWUpLb1pJaHZjTgpBUUVMQlFBRGdnRUJBQi94dDZ2d2EweWZHZFpKZ1k2ZDRUZEFtN2ZiTHRqUE15OHByTi9WZEdxN25oVDNUUE5zCjEwRFFaVGN6T21hTjVTZmpTaVAvaDRZQzQ0QjhFMll5Szg4Z2lDaUVEWDNlaDFYZnB3bnlJMVBDVE1mYys3cWUKMkJZTGJWSitRY040MDU4YituK24wMy9oVkN4L1VRRFhvc2w4Z2hOaHhGck9zRUtuVExiWHRsK29jQ0RtN3I3UwpUYTFkbWtFWCtWUnFJYXFGSDd1dDJveHgxcHdCdnJEeGUvV2cybXNqdHJZUXJ3eDJmQnErQ2Z1dm1sVS9rME4rCml3MEFjbVJsMy9veTdqR3ptMXdqdTJvNG4zSDNKQ25SbE41SnIyQkZTcFVQU3dCL1lUZ1ZobHVMNmwwRERxS3MKNTdYcEYxcjZWdmJmbTRldkhDNnJCSnNiZmI2ZU1KejZPMUU9Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+kubectl get csr
+kubectl certificate approve/deny nazwa-csr
+--------------------------------------------
+KubeConfig
+/root/.kube/config
+
+--------------------------------------------
+Roles, RoleBinding
+kubectl create role
+kubectl create role-binding
+
+rola - zestaw uprawnien do konkrenych resoursow
+rolebinding - przypisanie roli do usera
+
+przydatne rzeczy do debuggowania
+kubectl get pods --as nazwa-usera
+kubectl auth can-i get pods --as nazwa-usera
+
+------------------------------------------
+ClusterRole, ClusterRoleBinding
+kubectl api-resources - kozak sprawa, pozwala na dowiedzenie sie co ma jakie api i skrot
+z tym jest tak samo jak ze zwyklymi rolami i bindami, z ta rownica ze uprawnienia sa wazne na calym klastrze
+, nie w konkretnym namespace
+
+------------------------------------------
+ServiceAccount
+sa jest dla botow
+kubectl create sa
+info o tokenie, mozna go wyswietlic: kubectl describe secret nazwa-tokenu
+przy definicji poda w polu serviceAccountName mozna wpisac takie customowo utworzone i wtedy pod automatycznie uzywa tokuenu sa, a nie defaultowego
+
+------------------------------------------
+ImageSecurity
+obrazy dockerowe wykorzystywane w podach moga wymagac credentiali do pulla.
+Docker registry zawiera sie w nazwie image'a.
+kubectl create secret docker-registry
+potem mozna taki secret uzywc w konfiguracji poda w sekcji spec, na rowni z containers,
+imagePullSecrets:
+        - name: myregistrykey
+
+-------------------------------------------
+NetworkPolicies
+okresla kanaly dostepu do obiektu sprecyzowanego przez spec: podSelector
+Ingres - kanal do poda
+Egress - kanal wychodzacy z poda
+Wazne zeby sie nie popierdolic w yamlu
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: 
+  name: internal-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      name: internal
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress:
+  - {}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          name: mysql
+    ports:
+    - protocol: TCP
+      port: 3306
+  - to:
+    - podSelector:
+        matchLabels:
+          name: payroll
+    ports:
+    - protocol: TCP
+      port: 8080
