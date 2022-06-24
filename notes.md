@@ -217,3 +217,69 @@ spec:
     - protocol: TCP
       port: 8080
 ```
+
+### Storage
+#### Mounting volumes
+Mountowanie volumentow dziala tak samo jak w dockerze. W definicji poda podajemy nazwe volumenu i jego lokalizacje mountu w podzie. W spec definiujemy volumeny - ich nazwe i lokalizacje na hoscie
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data
+      # this field is optional
+      type: Directory
+```
+
+#### Persistent storage
+Tworzymy claim i uzywamy go w configuracji poda zamiast hostPath. Claim zajmuje storage z puli dostepnym pv pasujacych do niego.
+
+StorageClass okresla sposob provisioningowania storageu. Np na cloudzie. Stworznie StorageClass -> zawarcie StorageClass w configu pv -> pvc.
+##### PersistentVolumeClaim
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-log-1
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+```
+
+##### PersistentVolume
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-log
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /pv/log
+```
+##### Pod config with PVC
+```yaml
+volumes:
+  - name: zadanie
+    persistentVolumeClaim:
+      claimName: claim-log-1
+```
+
