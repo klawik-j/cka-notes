@@ -99,7 +99,14 @@ Ta sciezka to defaultowo
 #### Upgrade Nodea
 #TBD
 #### etcd backup
-#TBD
+```
+kubectl describe pod etcd-controlplane -n kube-system
+ETCDCTL_API=3 etcdctl snapshot save /path/to/snapshot.db \
+--cacert=/path/to/cacert
+--cert=/path/to/cert
+--key=/path/to/key
+```
+
 ### Certificates
 To jest trudny temat. Ogolnie to wszystko musi miec ze wszystkim certyfikat.
 
@@ -114,7 +121,12 @@ Jezeli sa jakies problemy z certyfikatami, to najczesciej jest to problem z api-
 ```
 
 #### CertificateSigningRequest
-jak wygenerowac taki certyfikat ??!! #TBD
+https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/
+```
+openssl genrsa -out myuser.key 2048
+openssl req -new -key myuser.key -out myuser.csr
+```
+
 ```yaml
 apiVersion: certificates.k8s.io/v1
 kind: CertificateSigningRequest
