@@ -294,4 +294,86 @@ volumes:
     persistentVolumeClaim:
       claimName: claim-log-1
 ```
+### CNI
+ps -aux | grep kubelet
+look for --network-plugin
+this will pbb be cni
+/opt/cni/bin
+/etc/cni/net.d
 
+### Ingress
+Takie proxy fajniejsze
+
+1. kubectl create namespace ingress-space
+1. kubectl create configmap nginx-configuration
+1. kubectl create serviceaccount ingress-serviceaccount
+1. role i rolebindings
+1. postawienie deployu Ingress Controller
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-controller
+  namespace: ingress-
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: nginx-ingress
+  template:
+    metadata:
+      labels:
+        name: nginx-ingress
+    spec:
+      serviceAccountName: ingress-serviceaccount
+      containers:
+        - name: nginx-ingress-controller
+          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.21.0
+          args:
+            - /nginx-ingress-controller
+            - --configmap=$(POD_NAMESPACE)/nginx-configuration
+            - --default-backend-service=app-space/default-http-backend
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - name: http
+                containerPort: 80
+            - name: https
+              containerPort: 443
+```
+1. postawienie servisu NodePort dla deployu Ingress Controller
+`kubectl expose -n ingress-space deployment ingress-controller --type=NodePort --port=80 --name=ingress --dry-run=client -o yaml > ingress.yaml` trzeba zmodyfikowac recznie node port i namespace
+1. Utworzenie ingressu https://kubernetes.io/docs/concepts/services-networking/ingress/
+
+### Troubleshooting
+#### Application Failure
+Sprawdzic poprawnosc podow i servisow:
+- selektor
+- labelki
+- nazwy
+- porty
+- servisy
+#### Controlplane Failure
+1. kubectl get pods -n kube-system
+#### Workernode Failure
+1. kubectl get nodes, kubectl describe nodes
+2. ssh node01
+3. systemctl status kubelet
+4. systemctl start kubeelet - restart kubeleta
+4. journalctl -u kubelet -f - logi kubeleta
+5. ps -aux | grep kubelet - warto sprawdzic sciezki do kubeconfiga i config.yaml poniewaz moga sie roznic od standardowych
+#### Network Failure
+1. jak pody sie wypierdolily i nie wstawaja bo cos z NetworkPolicy to pewnie chodzi o pligin cni. Trzeba miec link do waeve. Potem tylko kubectl apply -f.
+2. kubectl describe configmap -n kube-system kube-proxy
+
+###  Important directories
+1. /var/lib/kubelet/config.yaml - konfig kubeleta
+1. /etc/kubernetes/manifests - yamle static podow
+1. /etc/kubernetes/pki - roznego rodzaje certy
