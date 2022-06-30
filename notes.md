@@ -24,6 +24,7 @@ kubectl scale
 ps -aux | grep kubelet
 kubectl auth can-i get pods --as nazwa-usera
 kubectl api-resources
+kubectl run nginx --image alpine/nginx --rm -ti -- sh
 ```
 ### Services
 #### NodePort
